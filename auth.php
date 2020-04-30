@@ -120,6 +120,20 @@ class auth_plugin_userkey extends auth_plugin_base {
     }
 
     /**
+     * Regenerate session ID and redirects the user to provided URL with key parameter.
+     *
+     * @param $url URL to redirect to.
+     *
+     * @throws \moodle_exception If gets running via CLI or AJAX call.
+     */
+    protected function redirectloggedin($url) {
+        if (CLI_SCRIPT or AJAX_SCRIPT) {
+            throw new moodle_exception('redirecterrordetected', 'auth_userkey', '', $url);
+        }
+        session_regenerate_id($delete_old_session = true);
+        redirect($url);
+    }
+    /**
      * Don't allow login using login form.
      *
      * @param string $username The username (with system magic quotes)
@@ -141,7 +155,12 @@ class auth_plugin_userkey extends auth_plugin_base {
 
         $keyvalue = required_param('key', PARAM_ALPHANUM);
         $wantsurl = optional_param('wantsurl', '', PARAM_URL);
-
+        
+        //Check if a user is already logged in with another session on the same browser.
+       if (isloggedin()) {
+            $this->redirectloggedin($redirecturl.'/auth/userkey/login.php?key='.$keyvalue);
+        }
+        
         $key = $this->userkeymanager->validate_key($keyvalue);
         $this->userkeymanager->delete_keys($key->userid);
 
